@@ -22,7 +22,7 @@ class ApiException implements Exception {
 class EmailsResponse {
   final List<TestMail> emails;
   final int count;
-  final int limit;  
+  final int limit;
   final int offset;
 
   const EmailsResponse({
@@ -38,11 +38,9 @@ class ApiService {
   final Dio _dio;
   final SecureStorageService _storageService;
 
-  ApiService({
-    required SecureStorageService storageService,
-    Dio? dio,
-  })  : _storageService = storageService,
-        _dio = dio ?? Dio() {
+  ApiService({required SecureStorageService storageService, Dio? dio})
+    : _storageService = storageService,
+      _dio = dio ?? Dio() {
     _configureDio();
   }
 
@@ -54,17 +52,19 @@ class ApiService {
     );
 
     // Add logging interceptor (only logs non-sensitive data)
-    _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        // Never log API keys or sensitive headers
-        // Only log URL path for debugging
-        handler.next(options);
-      },
-      onError: (error, handler) {
-        // Log error type without sensitive details
-        handler.next(error);
-      },
-    ));
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          // Never log API keys or sensitive headers
+          // Only log URL path for debugging
+          handler.next(options);
+        },
+        onError: (error, handler) {
+          // Log error type without sensitive details
+          handler.next(error);
+        },
+      ),
+    );
   }
 
   /// Fetch emails from testmail.com
@@ -164,6 +164,74 @@ class ApiService {
       return response.emails.isNotEmpty || true; // Empty inbox is still valid
     } on ApiException {
       rethrow;
+    }
+  }
+
+  /// Test API connection using explicit credentials (bypasses storage read)
+  /// Use this when verifying credentials before they are persisted.
+  Future<bool> testConnectionWithConfig(ApiConfig config) async {
+    if (!config.isValid) {
+      throw const ApiException('Incomplete configuration.');
+    }
+
+    try {
+      final queryParams = <String, dynamic>{
+        'apikey': config.apiKey,
+        'namespace': config.namespace,
+        'limit': 1,
+        'offset': 0,
+      };
+
+      final response = await _dio.get<Map<String, dynamic>>(
+        config.baseUrl,
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 401) {
+        throw const ApiException(
+          'Invalid API key. Please check your configuration.',
+          statusCode: 401,
+        );
+      }
+
+      if (response.statusCode == 403) {
+        throw const ApiException(
+          'Access forbidden. Check your API key permissions.',
+          statusCode: 403,
+        );
+      }
+
+      if (response.statusCode != 200) {
+        throw ApiException(
+          'Failed to connect. Status: ${response.statusCode}',
+          statusCode: response.statusCode,
+        );
+      }
+
+      final data = response.data;
+      if (data == null) {
+        throw const ApiException('Empty response from server.');
+      }
+
+      if (data['result'] != 'success') {
+        final message = data['message'] as String? ?? 'Unknown error';
+        throw ApiException(message);
+      }
+
+      return true;
+    } on DioException catch (e) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        throw const ApiException(
+          'Connection timed out. Please check your internet connection.',
+        );
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        throw const ApiException(
+          'Unable to connect. Please check your internet connection.',
+        );
+      }
+      throw ApiException('Network error: ${e.message}');
     }
   }
 }
