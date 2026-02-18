@@ -113,7 +113,9 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
 
     setState(() => _isLoading = true);
 
-    final success = await ref.read(configNotifierProvider.notifier).saveConfiguration(
+    final success = await ref
+        .read(configNotifierProvider.notifier)
+        .saveConfiguration(
           apiKey: _apiKeyController.text.trim(),
           baseUrl: _baseUrlController.text.trim(),
           namespace: _namespaceController.text.trim(),
@@ -197,7 +199,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'TestMail Reader',
+                    'DevPostBox',
                     style: Theme.of(context).textTheme.headlineMedium,
                     textAlign: TextAlign.center,
                   ),
@@ -205,8 +207,8 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
                   Text(
                     'Enter your testmail.app API credentials',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).textTheme.bodySmall?.color,
-                        ),
+                      color: Theme.of(context).textTheme.bodySmall?.color,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
@@ -242,7 +244,9 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
                     prefixIcon: const Icon(Icons.key),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscureApiKey ? Icons.visibility : Icons.visibility_off,
+                        _obscureApiKey
+                            ? Icons.visibility
+                            : Icons.visibility_off,
                       ),
                       onPressed: () {
                         setState(() => _obscureApiKey = !_obscureApiKey);
@@ -303,7 +307,9 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
                     child: Text(
                       _testResult!,
                       style: TextStyle(
-                        color: _testSuccess ? AppColors.success : AppColors.error,
+                        color: _testSuccess
+                            ? AppColors.success
+                            : AppColors.error,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
@@ -349,9 +355,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
                   decoration: BoxDecoration(
                     color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: Theme.of(context).dividerColor,
-                    ),
+                    border: Border.all(color: Theme.of(context).dividerColor),
                   ),
                   child: Row(
                     children: [

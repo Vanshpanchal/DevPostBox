@@ -101,6 +101,8 @@ class TestMail extends HiveObject {
   final List<EmailAttachment> attachments;
   @HiveField(14)
   bool isRead;
+  @HiveField(15)
+  List<String> customTags; // User-defined tags (tag IDs)
 
   TestMail({
     required this.id,
@@ -118,6 +120,7 @@ class TestMail extends HiveObject {
     required this.downloadUrl,
     this.attachments = const [],
     this.isRead = false,
+    this.customTags = const [],
   });
 
   /// Factory constructor from API JSON response
@@ -125,7 +128,8 @@ class TestMail extends HiveObject {
     // Parse from_parsed array for name and address
     String fromName = '';
     String fromAddress = '';
-    if (json['from_parsed'] is List && (json['from_parsed'] as List).isNotEmpty) {
+    if (json['from_parsed'] is List &&
+        (json['from_parsed'] as List).isNotEmpty) {
       final parsed = json['from_parsed'][0] as Map<String, dynamic>;
       fromName = parsed['name'] as String? ?? '';
       fromAddress = parsed['address'] as String? ?? '';
@@ -224,6 +228,7 @@ class TestMail extends HiveObject {
     String? downloadUrl,
     List<EmailAttachment>? attachments,
     bool? isRead,
+    List<String>? customTags,
   }) {
     return TestMail(
       id: id ?? this.id,
@@ -241,6 +246,7 @@ class TestMail extends HiveObject {
       downloadUrl: downloadUrl ?? this.downloadUrl,
       attachments: attachments ?? this.attachments,
       isRead: isRead ?? this.isRead,
+      customTags: customTags ?? this.customTags,
     );
   }
 

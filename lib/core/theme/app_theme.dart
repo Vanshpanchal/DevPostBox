@@ -1,4 +1,4 @@
-/// App theme configuration for TestMail Reader
+/// App theme configuration for DevPostBox
 /// Black and white monochrome Material 3 theme
 library;
 
@@ -105,10 +105,12 @@ class AppTheme {
 
   static TextTheme _buildTextTheme(Brightness brightness) {
     final bool isLight = brightness == Brightness.light;
-    final Color primaryColor =
-        isLight ? AppColors.textPrimaryLight : AppColors.textPrimaryDark;
-    final Color secondaryColor =
-        isLight ? AppColors.textSecondaryLight : AppColors.textSecondaryDark;
+    final Color primaryColor = isLight
+        ? AppColors.textPrimaryLight
+        : AppColors.textPrimaryDark;
+    final Color secondaryColor = isLight
+        ? AppColors.textSecondaryLight
+        : AppColors.textSecondaryDark;
 
     return TextTheme(
       headlineLarge: GoogleFonts.inter(
@@ -176,9 +178,15 @@ class AppTheme {
 
   static InputDecorationTheme _buildInputTheme(Brightness brightness) {
     final bool isLight = brightness == Brightness.light;
-    final Color fillColor = isLight ? AppColors.surfaceLight : AppColors.cardDark;
-    final Color borderColor = isLight ? AppColors.dividerLight : AppColors.dividerDark;
-    final Color focusColor = isLight ? AppColors.primaryLight : AppColors.primaryDark;
+    final Color fillColor = isLight
+        ? AppColors.surfaceLight
+        : AppColors.cardDark;
+    final Color borderColor = isLight
+        ? AppColors.dividerLight
+        : AppColors.dividerDark;
+    final Color focusColor = isLight
+        ? AppColors.primaryLight
+        : AppColors.primaryDark;
 
     return InputDecorationTheme(
       filled: true,
@@ -207,36 +215,32 @@ class AppTheme {
     final bool isLight = brightness == Brightness.light;
     return ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
+        backgroundColor: isLight
+            ? AppColors.primaryLight
+            : AppColors.primaryDark,
         foregroundColor: isLight ? Colors.white : Colors.black,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        textStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );
   }
 
-  static OutlinedButtonThemeData _buildOutlinedButtonTheme(Brightness brightness) {
+  static OutlinedButtonThemeData _buildOutlinedButtonTheme(
+    Brightness brightness,
+  ) {
     final bool isLight = brightness == Brightness.light;
     return OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
-        foregroundColor: isLight ? AppColors.primaryLight : AppColors.primaryDark,
+        foregroundColor: isLight
+            ? AppColors.primaryLight
+            : AppColors.primaryDark,
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
         side: BorderSide(
           color: isLight ? AppColors.primaryLight : AppColors.primaryDark,
         ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        textStyle: GoogleFonts.inter(
-          fontSize: 16,
-          fontWeight: FontWeight.w600,
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
       ),
     );
   }

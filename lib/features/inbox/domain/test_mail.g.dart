@@ -78,13 +78,14 @@ class TestMailAdapter extends TypeAdapter<TestMail> {
       downloadUrl: fields[12] as String,
       attachments: (fields[13] as List).cast<EmailAttachment>(),
       isRead: fields[14] as bool,
+      customTags: (fields[15] as List).cast<String>(),
     );
   }
 
   @override
   void write(BinaryWriter writer, TestMail obj) {
     writer
-      ..writeByte(15)
+      ..writeByte(16)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -114,7 +115,9 @@ class TestMailAdapter extends TypeAdapter<TestMail> {
       ..writeByte(13)
       ..write(obj.attachments)
       ..writeByte(14)
-      ..write(obj.isRead);
+      ..write(obj.isRead)
+      ..writeByte(15)
+      ..write(obj.customTags);
   }
 
   @override

@@ -1,4 +1,4 @@
-/// App constants for TestMail Reader
+/// App constants for DevPostBox
 library;
 
 class AppConstants {

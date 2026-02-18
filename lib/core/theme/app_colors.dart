@@ -1,4 +1,4 @@
-/// App color palette for TestMail Reader
+/// App color palette for DevPostBox
 /// Black and white monochrome theme for developer-tool aesthetic
 library;
 
@@ -9,7 +9,7 @@ class AppColors {
 
   // Primary - Warm Orange
   static const Color primaryLight = Color(0xFFFF9800); // Orange
-  static const Color primaryDark = Color(0xFFFF9800);  // Same for single theme
+  static const Color primaryDark = Color(0xFFFF9800); // Same for single theme
 
   // Secondary - Yellow
   static const Color secondary = Color(0xFFFFEB3B); // Yellow
@@ -46,5 +46,5 @@ class AppColors {
 
   // Dividers
   static const Color dividerLight = Color(0xFFFFE0B2); // Light Orange
-  static const Color dividerDark = Color(0xFFFFE0B2); 
+  static const Color dividerDark = Color(0xFFFFE0B2);
 }

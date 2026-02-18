@@ -5,9 +5,10 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/web_scrollbar.dart';
 import 'features/config/presentation/config_screen.dart';
 import 'features/config/providers/config_provider.dart';
-import 'features/inbox/presentation/inbox_screen.dart';
+import 'features/inbox/presentation/web_inbox_screen.dart';
 import 'features/splash/presentation/splash_screen.dart';
 
 class TestMailApp extends ConsumerStatefulWidget {
@@ -23,7 +24,6 @@ class _TestMailAppState extends ConsumerState<TestMailApp> {
     super.initState();
     // Check configuration on app start with minimum splash duration
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-
       if (mounted) {
         ref.read(configNotifierProvider.notifier).checkConfiguration();
       }
@@ -40,6 +40,7 @@ class _TestMailAppState extends ConsumerState<TestMailApp> {
       theme: AppTheme.light,
       // darkTheme: AppTheme.dark, // Disabled per user request
       themeMode: ThemeMode.light,
+      scrollBehavior: CustomScrollBehavior(),
       home: _buildHome(configState),
     );
   }
@@ -53,7 +54,7 @@ class _TestMailAppState extends ConsumerState<TestMailApp> {
       case ConfigError():
         return const ConfigScreen();
       case ConfigLoaded():
-        return const InboxScreen();
+        return const WebInboxScreen();
     }
   }
 }

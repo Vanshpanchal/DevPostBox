@@ -3,12 +3,17 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../shared/widgets/email_tag_selector.dart';
+import '../../../../shared/widgets/tag_manager_dialog.dart';
 import '../../domain/test_mail.dart';
+import '../../domain/email_tag.dart';
 import '../../../search/providers/search_provider.dart';
 
-class EmailCard extends StatelessWidget {
+class EmailCard extends ConsumerStatefulWidget {
   final TestMail email;
   final VoidCallback onTap;
   final String searchQuery;
@@ -21,209 +26,391 @@ class EmailCard extends StatelessWidget {
   });
 
   @override
+  ConsumerState<EmailCard> createState() => _EmailCardState();
+}
+
+class _EmailCardState extends ConsumerState<EmailCard> {
+  bool _isHovered = false;
+  List<EmailTag> _customTags = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomTags();
+  }
+
+  void _loadCustomTags() {
+    final tagService = ref.read(tagServiceProvider);
+    setState(() {
+      _customTags = tagService.getEmailTags(widget.email.id);
+    });
+  }
+
+  Future<void> _showTagSelector() async {
+    await showDialog(
+      context: context,
+      builder: (context) => EmailTagSelector(
+        email: widget.email,
+        onTagsChanged: (tagIds) {
+          _loadCustomTags();
+        },
+      ),
+    );
+  }
+
+  void _copyToClipboard(BuildContext context, String text, String message) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    // Since we forced Light Mode, isDark will be false.
-    // We can simplify logic or leave it for potential future dark mode.
     final isDark = theme.brightness == Brightness.dark;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: Material(
-        color: AppColors.cardLight,
-        borderRadius: BorderRadius.circular(16),
-        elevation: 2,
-        shadowColor: AppColors.primaryLight.withValues(alpha: 0.1),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: AppColors.dividerLight.withValues(alpha: 0.5),
-                width: 1,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
+        child: Material(
+          color: _isHovered
+              ? AppColors.primaryLight.withValues(alpha: 0.02)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: _isHovered
+                    ? Border.all(
+                        color: AppColors.primaryLight.withValues(alpha: 0.2),
+                        width: 1,
+                      )
+                    : null,
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Header row with avatar, sender, time
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Avatar with unread indicator
-                    Stack(
-                      children: [
-                        _buildAvatar(context),
-                        if (!email.isRead)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 14,
-                              height: 14,
-                              decoration: BoxDecoration(
-                                color: AppColors.unreadDot, // Orange
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.cardLight, // White border
-                                  width: 2.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(width: 16),
-
-                    // Sender and time
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header row with avatar, sender, time
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Avatar with unread indicator
+                      Stack(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildHighlightedText(
-                                  context,
-                                  email.displayName,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontWeight: email.isRead
-                                        ? FontWeight.w500
-                                        : FontWeight.w800,
-                                    color: AppColors.textPrimaryLight,
+                          _buildAvatar(context),
+                          if (!widget.email.isRead)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: BoxDecoration(
+                                  color: AppColors.unreadDot, // Orange
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.cardLight, // White border
+                                    width: 2.5,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                _formatTime(email.createdAt),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondaryLight,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            email.fromAddress,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondaryLight,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                      const SizedBox(width: 16),
 
-                // Subject
-                _buildHighlightedText(
-                  context,
-                  email.subject,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: email.isRead ? FontWeight.w500 : FontWeight.w700,
-                    color: AppColors.textPrimaryLight,
-                    height: 1.3,
-                  ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 6),
-
-                // Preview text
-                _buildHighlightedText(
-                  context,
-                  email.previewText,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondaryLight,
-                    height: 1.4,
-                  ),
-                  maxLines: 2,
-                ),
-
-                // Bottom row with tag and attachment indicator
-                if (email.tag.isNotEmpty || email.hasAttachments) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      // Tag chip
-                      if (email.tag.isNotEmpty)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.secondary.withValues(alpha: 0.3), // Yellow tint
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(
-                              color: AppColors.secondary, // Yellow border
-                              width: 1,
+                      // Sender and time
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildHighlightedText(
+                                    context,
+                                    widget.email.displayName,
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          fontWeight: widget.email.isRead
+                                              ? FontWeight.w500
+                                              : FontWeight.w800,
+                                          color: AppColors.textPrimaryLight,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _formatTime(widget.email.createdAt),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondaryLight,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.label_outline,
-                                size: 14,
-                                color: Colors.black87, // Black/Dark Grey for contrast on yellow
+                            const SizedBox(height: 4),
+                            GestureDetector(
+                              onTap: () => _copyToClipboard(
+                                context,
+                                widget.email.fromAddress,
+                                'Email address copied',
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                email.tag,
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 0.3,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      widget.email.fromAddress,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: AppColors.textSecondaryLight,
+                                            decoration:
+                                                TextDecoration.underline,
+                                            decorationStyle:
+                                                TextDecorationStyle.dotted,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.content_copy,
+                                    size: 12,
+                                    color: AppColors.textSecondaryLight
+                                        .withValues(alpha: 0.6),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-
-                      const Spacer(),
-
-                      // Attachment indicator
-                      if (email.hasAttachments)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppColors.dividerLight.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(
-                                Icons.attach_file,
-                                size: 16,
-                                color: AppColors.primaryLight, // Orange icon
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${email.attachmentCount}',
-                                style: theme.textTheme.labelSmall?.copyWith(
-                                  color: AppColors.textPrimaryLight,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+
+                  // Subject
+                  _buildHighlightedText(
+                    context,
+                    widget.email.subject,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: widget.email.isRead
+                          ? FontWeight.w500
+                          : FontWeight.w700,
+                      color: AppColors.textPrimaryLight,
+                      height: 1.3,
+                    ),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Preview text
+                  _buildHighlightedText(
+                    context,
+                    widget.email.previewText,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondaryLight,
+                      height: 1.4,
+                    ),
+                    maxLines: 2,
+                  ),
+
+                  // Bottom row with tags and attachment indicator
+                  if (widget.email.tag.isNotEmpty ||
+                      _customTags.isNotEmpty ||
+                      widget.email.hasAttachments) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              // API Tag (from testmail namespace)
+                              if (widget.email.tag.isNotEmpty)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.secondary.withValues(
+                                      alpha: 0.3,
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: AppColors.secondary,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.label_outline,
+                                        size: 14,
+                                        color: Colors.black87,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        widget.email.tag,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: Colors.black87,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.3,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                              // Custom Tags
+                              ..._customTags.map((tag) {
+                                final tagColor = Color(
+                                  int.parse('0xFF${tag.color.substring(1)}'),
+                                );
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: tagColor.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: tagColor,
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.label,
+                                        size: 14,
+                                        color: tagColor,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        tag.name,
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: tagColor,
+                                              fontWeight: FontWeight.w600,
+                                              letterSpacing: 0.3,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+
+                              // Add Tag Button
+                              InkWell(
+                                onTap: _showTagSelector,
+                                borderRadius: BorderRadius.circular(20),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? AppColors.dividerDark
+                                          : AppColors.dividerLight,
+                                      width: 1,
+                                      style: BorderStyle.solid,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.add,
+                                        size: 16,
+                                        color: isDark
+                                            ? AppColors.textSecondaryDark
+                                            : AppColors.textSecondaryLight,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Tag',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                              color: isDark
+                                                  ? AppColors.textSecondaryDark
+                                                  : AppColors
+                                                        .textSecondaryLight,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Attachment indicator
+                        if (widget.email.hasAttachments) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.dividerLight.withValues(
+                                alpha: 0.3,
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.attach_file,
+                                  size: 16,
+                                  color: AppColors.primaryLight,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${widget.email.attachmentCount}',
+                                  style: theme.textTheme.labelSmall?.copyWith(
+                                    color: AppColors.textPrimaryLight,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -233,26 +420,26 @@ class EmailCard extends StatelessWidget {
 
   Widget _buildAvatar(BuildContext context) {
     return Container(
-      width: 48,
-      height: 48,
+      width: 40,
+      height: 40,
       decoration: BoxDecoration(
         color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryLight.withValues(alpha: 0.2),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
+            color: AppColors.primaryLight.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Center(
         child: Text(
-          email.initials,
+          widget.email.initials,
           style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
-            fontSize: 18,
+            fontSize: 16,
           ),
         ),
       ),
@@ -265,7 +452,7 @@ class EmailCard extends StatelessWidget {
     TextStyle? style,
     int maxLines = 1,
   }) {
-    if (searchQuery.isEmpty) {
+    if (widget.searchQuery.isEmpty) {
       return Text(
         text,
         style: style,
@@ -274,7 +461,7 @@ class EmailCard extends StatelessWidget {
       );
     }
 
-    final spans = text.getHighlightSpans(searchQuery);
+    final spans = text.getHighlightSpans(widget.searchQuery);
 
     return RichText(
       maxLines: maxLines,

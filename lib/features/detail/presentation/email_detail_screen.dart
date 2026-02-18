@@ -12,13 +12,19 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../shared/widgets/responsive_layout.dart';
 import '../../inbox/domain/test_mail.dart';
 import '../../../core/utils/otp_extractor.dart';
 
 class EmailDetailScreen extends StatefulWidget {
   final TestMail email;
+  final bool isEmbedded; // For split-view mode on desktop
 
-  const EmailDetailScreen({super.key, required this.email});
+  const EmailDetailScreen({
+    super.key,
+    required this.email,
+    this.isEmbedded = false,
+  });
 
   @override
   State<EmailDetailScreen> createState() => _EmailDetailScreenState();
@@ -34,89 +40,116 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
   }
 
   void _detectOtp() {
-    final content = widget.email.text.isNotEmpty ? widget.email.text : widget.email.html;
+    final content = widget.email.text.isNotEmpty
+        ? widget.email.text
+        : widget.email.html;
     setState(() {
       _detectedOtp = OtpExtractor.extract(content);
     });
   }
 
+  void _copyToClipboard(BuildContext context, String text, String message) {
+    Clipboard.setData(ClipboardData(text: text));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isDesktop = ResponsiveLayout.isDesktop(context);
+    final showAppBar = !widget.isEmbedded || !isDesktop;
+
     // Force light mode logic as per app setting
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: AppColors.cardLight,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primaryLight.withValues(alpha: 0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: const Icon(
-              Icons.arrow_back,
-              size: 20,
-              color: AppColors.textPrimaryLight,
-            ),
-          ),
-          onPressed: () => Navigator.pop(context),
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-        ),
-        actions: [
-          IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppColors.cardLight,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primaryLight.withValues(alpha: 0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+      appBar: showAppBar
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardLight,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primaryLight.withValues(alpha: 0.1),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
+                  child: const Icon(
+                    Icons.arrow_back,
+                    size: 20,
+                    color: AppColors.textPrimaryLight,
+                  ),
+                ),
+                onPressed: () => Navigator.pop(context),
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
               ),
-              child: const Icon(
-                Icons.share_outlined,
-                size: 20,
-                color: AppColors.textPrimaryLight,
-              ),
-            ),
-            onPressed: () => _shareEmail(context),
-            splashColor: Colors.transparent,
-            highlightColor: Colors.transparent,
-          ),
-          const SizedBox(width: 16),
-        ],
-      ),
+              actions: [
+                IconButton(
+                  icon: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardLight,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primaryLight.withValues(alpha: 0.1),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.share_outlined,
+                      size: 20,
+                      color: AppColors.textPrimaryLight,
+                    ),
+                  ),
+                  onPressed: () => _shareEmail(context),
+                  splashColor: Colors.transparent,
+                  highlightColor: Colors.transparent,
+                ),
+                const SizedBox(width: 16),
+              ],
+            )
+          : null,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.only(bottom: 32),
+          padding: EdgeInsets.only(
+            left: widget.isEmbedded && isDesktop ? 32 : 0,
+            right: widget.isEmbedded && isDesktop ? 32 : 0,
+            top: widget.isEmbedded && isDesktop ? 24 : 0,
+            bottom: 32,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Email header card
               _buildHeaderCard(context),
-  
+
               const SizedBox(height: 16),
-  
+
               // OTP detection
-              if (_detectedOtp != null) _buildOtpSection(context, _detectedOtp!),
-  
+              if (_detectedOtp != null)
+                _buildOtpSection(context, _detectedOtp!),
+
               // Attachments section
-              if (widget.email.hasAttachments) _buildAttachmentsSection(context),
-  
+              if (widget.email.hasAttachments)
+                _buildAttachmentsSection(context),
+
               // Email body card
               _buildBodyCard(context),
             ],
@@ -200,11 +233,35 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      widget.email.fromAddress,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondaryLight,
-                        fontWeight: FontWeight.w500,
+                    GestureDetector(
+                      onTap: () => _copyToClipboard(
+                        context,
+                        widget.email.fromAddress,
+                        'From address copied',
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.email.fromAddress,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondaryLight,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                                decorationStyle: TextDecorationStyle.dotted,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.content_copy,
+                            size: 14,
+                            color: AppColors.textSecondaryLight.withValues(
+                              alpha: 0.6,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -220,21 +277,55 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
               _buildMetaChip(
                 context,
                 Icons.schedule,
-                DateFormat('MMM d, yyyy • h:mm a').format(widget.email.createdAt),
+                DateFormat(
+                  'MMM d, yyyy • h:mm a',
+                ).format(widget.email.createdAt),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildMetaChip(
-                  context,
-                  Icons.alternate_email,
-                  'To: ${widget.email.to}',
+          GestureDetector(
+            onTap: () =>
+                _copyToClipboard(context, widget.email.to, 'To address copied'),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.alternate_email,
+                        size: 18,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          'To: ${widget.email.to}',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: AppColors.textSecondaryLight,
+                                fontWeight: FontWeight.w500,
+                                decoration: TextDecoration.underline,
+                                decorationStyle: TextDecorationStyle.dotted,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Icon(
+                        Icons.content_copy,
+                        size: 14,
+                        color: AppColors.textSecondaryLight.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           // Tag
@@ -278,19 +369,15 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: 18,
-          color: AppColors.textSecondaryLight,
-        ),
+        Icon(icon, size: 18, color: AppColors.textSecondaryLight),
         const SizedBox(width: 8),
         Flexible(
           child: Text(
             text,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.textSecondaryLight,
-                  fontWeight: FontWeight.w500,
-                ),
+              color: AppColors.textSecondaryLight,
+              fontWeight: FontWeight.w500,
+            ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -309,7 +396,7 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
         elevation: 4,
         shadowColor: AppColors.secondary.withValues(alpha: 0.3),
         child: InkWell(
-          onTap: () => _copyToClipboard(context, otpCode),
+          onTap: () => _copyToClipboard(context, otpCode, 'OTP copied'),
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -323,10 +410,10 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
                     Text(
                       'VERIFICATION CODE',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.5,
-                          ),
+                        color: Colors.black87,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5,
+                      ),
                     ),
                   ],
                 ),
@@ -334,20 +421,20 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
                 Text(
                   otpCode,
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontFamily: 'JetBrains Mono',
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 4,
-                        color: Colors.black,
-                        fontSize: 32,
-                      ),
+                    fontFamily: 'JetBrains Mono',
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 4,
+                    color: Colors.black,
+                    fontSize: 32,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Tap to Copy',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.black54,
-                        fontWeight: FontWeight.w600,
-                      ),
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -426,8 +513,9 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
                           width: 48,
                           height: 48,
                           decoration: BoxDecoration(
-                            color: _getFileColor(attachment.extension)
-                                .withValues(alpha: 0.1),
+                            color: _getFileColor(
+                              attachment.extension,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Center(
@@ -594,20 +682,9 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
     );
   }
 
-  void _copyToClipboard(BuildContext context, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Copied: $text'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
   void _shareEmail(BuildContext context) {
-    final shareText = '''
+    final shareText =
+        '''
 Subject: ${widget.email.subject}
 From: ${widget.email.from}
 Date: ${DateFormat('MMM d, yyyy • h:mm a').format(widget.email.createdAt)}
@@ -619,7 +696,9 @@ ${widget.email.text}
   }
 
   Future<void> _downloadAndOpenAttachment(
-      BuildContext context, EmailAttachment attachment) async {
+    BuildContext context,
+    EmailAttachment attachment,
+  ) async {
     // Show download dialog
     showDialog(
       context: context,
@@ -651,7 +730,7 @@ ${widget.email.text}
 
       if (context.mounted) {
         Navigator.pop(context); // Close dialog
-        
+
         // Open file using open_filex
         final result = await OpenFilex.open(filePath);
         if (result.type != ResultType.done) {
@@ -703,9 +782,7 @@ ${widget.email.text}
         title: const Text('Open Link?'),
         content: Text(
           url,
-          style: const TextStyle(
-            color: AppColors.textSecondaryLight,
-          ),
+          style: const TextStyle(color: AppColors.textSecondaryLight),
         ),
         actions: [
           TextButton(
@@ -715,7 +792,7 @@ ${widget.email.text}
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              _copyToClipboard(context, url);
+              _copyToClipboard(context, url, 'URL copied');
             },
             child: const Text('Copy Link'),
           ),
