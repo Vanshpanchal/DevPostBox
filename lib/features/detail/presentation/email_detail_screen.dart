@@ -32,6 +32,8 @@ class EmailDetailScreen extends StatefulWidget {
 
 class _EmailDetailScreenState extends State<EmailDetailScreen> {
   String? _detectedOtp;
+  
+  static final _dateFormat = DateFormat('MMM d, yyyy • h:mm a');
 
   @override
   void initState() {
@@ -127,32 +129,34 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
             )
           : null,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            left: widget.isEmbedded && isDesktop ? 32 : 0,
-            right: widget.isEmbedded && isDesktop ? 32 : 0,
-            top: widget.isEmbedded && isDesktop ? 24 : 0,
-            bottom: 32,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Email header card
-              _buildHeaderCard(context),
+        child: SelectionArea(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              left: widget.isEmbedded && isDesktop ? 32 : 0,
+              right: widget.isEmbedded && isDesktop ? 32 : 0,
+              top: widget.isEmbedded && isDesktop ? 24 : 0,
+              bottom: 32,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Email header card
+                _buildHeaderCard(context),
 
-              const SizedBox(height: 16),
+                const SizedBox(height: 16),
 
-              // OTP detection
-              if (_detectedOtp != null)
-                _buildOtpSection(context, _detectedOtp!),
+                // OTP detection
+                if (_detectedOtp != null)
+                  _buildOtpSection(context, _detectedOtp!),
 
-              // Attachments section
-              if (widget.email.hasAttachments)
-                _buildAttachmentsSection(context),
+                // Attachments section
+                if (widget.email.hasAttachments)
+                  _buildAttachmentsSection(context),
 
-              // Email body card
-              _buildBodyCard(context),
-            ],
+                // Email body card
+                _buildBodyCard(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -277,9 +281,7 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
               _buildMetaChip(
                 context,
                 Icons.schedule,
-                DateFormat(
-                  'MMM d, yyyy • h:mm a',
-                ).format(widget.email.createdAt),
+                _dateFormat.format(widget.email.createdAt),
               ),
             ],
           ),
@@ -687,7 +689,7 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
         '''
 Subject: ${widget.email.subject}
 From: ${widget.email.from}
-Date: ${DateFormat('MMM d, yyyy • h:mm a').format(widget.email.createdAt)}
+Date: ${_dateFormat.format(widget.email.createdAt)}
 
 ${widget.email.text}
 ''';
@@ -699,24 +701,22 @@ ${widget.email.text}
     BuildContext context,
     EmailAttachment attachment,
   ) async {
-    // Show download dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Downloading attachment...'),
-              ],
+    // Show non-blocking download snackbar
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
             ),
-          ),
+            const SizedBox(width: 16),
+            Text('Downloading ${attachment.filename}...'),
+          ],
         ),
+        duration: const Duration(minutes: 1), // Will be dismissed manually
+        behavior: SnackBarBehavior.floating,
       ),
     );
 
@@ -729,7 +729,7 @@ ${widget.email.text}
       await dio.download(attachment.downloadUrl, filePath);
 
       if (context.mounted) {
-        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
         // Open file using open_filex
         final result = await OpenFilex.open(filePath);
@@ -739,7 +739,7 @@ ${widget.email.text}
       }
     } catch (e) {
       if (context.mounted) {
-        Navigator.pop(context); // Close dialog
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Could not open file: $e'),

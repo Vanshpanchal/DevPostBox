@@ -210,7 +210,7 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [Color(0xFFFF9800), Color(0xFFFF6D00)],
+                  colors: [AppColors.primaryLight, AppColors.primaryDark],
                 ),
               ),
               child: SafeArea(
@@ -629,8 +629,17 @@ class _ConfigScreenState extends ConsumerState<ConfigScreen> {
             decoration: _inputDecoration(
               label: 'e.g., aaaaa',
               icon: Icons.folder_outlined,
+            ).copyWith(
+              // Change hint based on state
+              hintText: widget.isSettings ? 'Cannot be changed' : 'Enter namespace',
             ),
-            style: const TextStyle(fontSize: 14),
+            // Make read-only when editing settings (user should clear config instead to change entirely)
+            readOnly: widget.isSettings,
+            style: TextStyle(
+                fontSize: 14, 
+                // Grey it out visually to imply it is locked if in settings
+                color: widget.isSettings ? AppColors.textSecondaryLight : AppColors.textPrimaryLight
+            ),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
                 return 'Please enter your namespace';

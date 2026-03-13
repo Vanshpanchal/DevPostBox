@@ -8,16 +8,9 @@ import '../../inbox/providers/inbox_provider.dart';
 /// Provider for search query
 final searchQueryProvider = StateProvider<String>((ref) => '');
 
-/// Provider for filtered emails based on search query
-final filteredEmailsProvider = Provider<List<TestMail>>((ref) {
+final displayedEmailsProvider = Provider<List<TestMail>>((ref) {
   final query = ref.watch(searchQueryProvider).toLowerCase().trim();
-  final inboxState = ref.watch(inboxNotifierProvider);
-
-  if (inboxState is! InboxLoaded) {
-    return [];
-  }
-
-  final emails = inboxState.emails;
+  final emails = ref.watch(filteredInboxProvider);
 
   if (query.isEmpty) {
     return emails;
@@ -50,7 +43,7 @@ final filteredEmailsProvider = Provider<List<TestMail>>((ref) {
 
 /// Provider for search result count
 final searchResultCountProvider = Provider<int>((ref) {
-  return ref.watch(filteredEmailsProvider).length;
+  return ref.watch(displayedEmailsProvider).length;
 });
 
 /// Provider to check if search is active

@@ -7,6 +7,7 @@ class HiveService {
 
   static const String _lastFetchKey = 'last_fetch_time';
   static const String _readEmailsKey = 'read_email_ids';
+  static const String _generatedEmailsKey = 'generated_emails';
 
   /// Initialize Hive
   Future<void> init() async {
@@ -76,6 +77,29 @@ class HiveService {
         email.isRead = true;
         await email.save(); // HiveObject extension
       }
+    }
+  }
+
+  /// Get generated email addresses
+  List<String> getGeneratedEmails() {
+    final List<dynamic>? emails = _settingsBox.get(_generatedEmailsKey);
+    return emails?.cast<String>().toList() ?? [];
+  }
+
+  /// Add a newly generated email address
+  Future<void> addGeneratedEmail(String email) async {
+    final emails = getGeneratedEmails();
+    if (!emails.contains(email)) {
+      emails.insert(0, email);
+      await _settingsBox.put(_generatedEmailsKey, emails);
+    }
+  }
+
+  /// Delete a generated email address
+  Future<void> deleteGeneratedEmail(String email) async {
+    final emails = getGeneratedEmails();
+    if (emails.remove(email)) {
+      await _settingsBox.put(_generatedEmailsKey, emails);
     }
   }
 }

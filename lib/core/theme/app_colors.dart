@@ -7,44 +7,44 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Primary - Warm Orange
-  static const Color primaryLight = Color(0xFFFF9800); // Orange
-  static const Color primaryDark = Color(0xFFFF9800); // Same for single theme
+  // Primary - Blue
+  static const Color primaryLight = Color(0xFF4285F4);
+  static const Color primaryDark = Color(0xFF4285F4);
 
-  // Secondary - Yellow
-  static const Color secondary = Color(0xFFFFEB3B); // Yellow
+  // Secondary - Green
+  static const Color secondary = Color(0xFF34A853);
 
-  // Surface colors - Light theme (Cream/White)
-  static const Color surfaceLight = Color(0xFFFFFFFF);
+  // Surface colors - Light theme
+  static const Color surfaceLight = Color(0xFFFFFFFF); // Pure white
   static const Color cardLight = Color(0xFFFFFFFF);
-  static const Color backgroundLight = Color(0xFFFFFDE7); // Cream
+  static const Color backgroundLight = Color(0xFFF8F9FA); // Google App Light Gray
 
-  // Surface colors - Dark theme (Unused/Same)
-  static const Color surfaceDark = Color(0xFFFFFFFF);
-  static const Color cardDark = Color(0xFFFFFFFF);
-  static const Color backgroundDark = Color(0xFFFFFDE7);
+  // Surface colors - Dark theme
+  static const Color surfaceDark = Color(0xFF202124); // Google Dark Gray
+  static const Color cardDark = Color(0xFF202124);
+  static const Color backgroundDark = Color(0xFF171717);
 
   // Text colors
-  static const Color textPrimaryLight = Color(0xFF212121);
-  static const Color textSecondaryLight = Color(0xFF757575);
-  static const Color textPrimaryDark = Color(0xFF212121);
-  static const Color textSecondaryDark = Color(0xFF757575);
+  static const Color textPrimaryLight = Color(0xFF202124); // Google Text Gray
+  static const Color textSecondaryLight = Color(0xFF5F6368); // Google Secondary Text
+  static const Color textPrimaryDark = Color(0xFFE8EAED); // Light Gray
+  static const Color textSecondaryDark = Color(0xFF9AA0A6); // Medium Gray
 
   // Status colors
-  static const Color success = Color(0xFF4CAF50);
-  static const Color error = Color(0xFFE64A19); // Deep Orange
-  static const Color warning = Color(0xFFFBC02D); // Darker Yellow
-  static const Color info = Color(0xFF2196F3);
+  static const Color success = Color(0xFF34A853); // Green
+  static const Color error = Color(0xFFEA4335); // Red
+  static const Color warning = Color(0xFFFBBC05); // Yellow
+  static const Color info = Color(0xFF4285F4); // Blue
 
-  // Unread indicator
-  static const Color unreadDot = Color(0xFFFF9800); // Orange
-  static const Color unreadDotDark = Color(0xFFFF9800);
+  // Unread indicator 
+  static const Color unreadDot = Color(0xFF4285F4); // Blue
+  static const Color unreadDotDark = Color(0xFF4285F4);
 
-  // Code/developer aesthetic (Kept for details if needed, or adapted)
-  static const Color codeBackground = Color(0xFFFFF59D); // Light Yellow
-  static const Color codeForeground = Color(0xFF212121);
+  // Code/developer aesthetic 
+  static const Color codeBackground = Color(0xFFF1F3F4); // Very light gray
+  static const Color codeForeground = Color(0xFF202124);
 
   // Dividers
-  static const Color dividerLight = Color(0xFFFFE0B2); // Light Orange
-  static const Color dividerDark = Color(0xFFFFE0B2);
+  static const Color dividerLight = Color(0xFFDADCE0); // Google Border Gray
+  static const Color dividerDark = Color(0xFF3C4043); // Dark Border Gray
 }

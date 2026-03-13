@@ -3,12 +3,9 @@
 library;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/utils/debouncer.dart';
-import '../../../shared/widgets/empty_state_widget.dart';
-import '../../../shared/widgets/loading_widget.dart';
 import '../../../shared/widgets/responsive_layout.dart';
 import '../../../shared/widgets/tag_manager_dialog.dart';
 import '../../config/presentation/config_screen.dart';
@@ -16,7 +13,12 @@ import '../../detail/presentation/email_detail_screen.dart';
 import '../../search/providers/search_provider.dart';
 import '../domain/test_mail.dart';
 import '../providers/inbox_provider.dart';
-import 'widgets/email_card.dart';
+
+import 'widgets/inbox_header.dart';
+import 'widgets/inbox_search_bar.dart';
+import 'widgets/inbox_filter_bar.dart';
+import 'widgets/email_list_view.dart';
+import 'widgets/generated_emails_dialog.dart';
 
 class WebInboxScreen extends ConsumerStatefulWidget {
   const WebInboxScreen({super.key});
@@ -26,9 +28,8 @@ class WebInboxScreen extends ConsumerStatefulWidget {
 }
 
 class _WebInboxScreenState extends ConsumerState<WebInboxScreen> {
-  final _searchController = TextEditingController();
-  final _debouncer = Debouncer(milliseconds: AppConstants.searchDebounceMs);
   TestMail? _selectedEmail;
+  final FocusNode _listFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -40,20 +41,8 @@ class _WebInboxScreenState extends ConsumerState<WebInboxScreen> {
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _debouncer.dispose();
+    _listFocusNode.dispose();
     super.dispose();
-  }
-
-  void _onSearchChanged(String query) {
-    _debouncer.run(() {
-      ref.read(searchQueryProvider.notifier).state = query;
-    });
-  }
-
-  void _clearSearch() {
-    _searchController.clear();
-    ref.read(searchQueryProvider.notifier).state = '';
   }
 
   Future<void> _openTagManager() async {
@@ -77,308 +66,122 @@ class _WebInboxScreenState extends ConsumerState<WebInboxScreen> {
     }
   }
 
-  void _selectEmail(TestMail email) {
+  Future<void> _openGeneratedEmails() async {
+    await showDialog(
+      context: context,
+      builder: (context) => const GeneratedEmailsDialog(),
+    );
+  }
+
+  void _selectEmail(TestMail email, {bool isMobile = false}) {
     ref.read(inboxNotifierProvider.notifier).markAsRead(email.id);
-    setState(() {
-      _selectedEmail = email;
-    });
+    if (isMobile) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => EmailDetailScreen(email: email),
+        ),
+      );
+    } else {
+      setState(() {
+        _selectedEmail = email;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final inboxState = ref.watch(inboxNotifierProvider);
-    final searchQuery = ref.watch(searchQueryProvider);
-    final isSearchActive = searchQuery.isNotEmpty;
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final isDesktop = ResponsiveLayout.isDesktop(context);
 
-    // On mobile, use traditional navigation
     if (!isDesktop) {
-      return _buildMobileLayout(
-        context,
-        inboxState,
-        searchQuery,
-        isSearchActive,
-        theme,
-        isDark,
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Inbox'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.generating_tokens_outlined),
+              onPressed: _openGeneratedEmails,
+              tooltip: 'Generated Emails',
+            ),
+            IconButton(
+              icon: const Icon(Icons.label_outline),
+              onPressed: _openTagManager,
+              tooltip: 'Manage Tags',
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: _openSettings,
+            ),
+          ],
+        ),
+        body: Column(
+          children: [
+            InboxSearchBar(isDark: isDark),
+            InboxFilterBar(isDark: isDark),
+            Expanded(
+              child: EmailListView(
+                isMobile: true,
+                onEmailTap: (email) => _selectEmail(email, isMobile: true),
+              ),
+            ),
+          ],
+        ),
       );
     }
 
-    // Desktop layout with two panes
     return Scaffold(
       backgroundColor: AppColors.backgroundLight,
-      body: Row(
-        children: [
-          // Left sidebar - Email list
-          Container(
-            width: 420,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              border: Border(
-                right: BorderSide(color: AppColors.dividerLight, width: 1),
+      body: Focus(
+        focusNode: _listFocusNode,
+        autofocus: true,
+        onKeyEvent: _handleKeyEvent,
+        child: Row(
+          children: [
+            Container(
+              width: 420,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                border: Border(
+                  right: BorderSide(color: AppColors.dividerLight, width: 1),
+                ),
               ),
-            ),
-            child: Column(
-              children: [
-                _buildDesktopHeader(isDark),
-                _buildSearchBar(isSearchActive, isDark),
-                _buildFilters(isDark),
-                Expanded(
-                  child: _buildEmailList(
-                    inboxState,
-                    searchQuery,
-                    isSearchActive,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Right panel - Email detail
-          Expanded(
-            child: _selectedEmail != null
-                ? _buildDetailView(_selectedEmail!)
-                : _buildEmptyDetailView(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDesktopHeader(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: AppColors.dividerLight, width: 1),
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppColors.primaryLight,
-                  AppColors.primaryLight.withValues(alpha: 0.8),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.mail_outline,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'DevPostBox',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimaryLight,
-                  ),
-                ),
-                Text(
-                  'Test Email Reader',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.label_outline),
-            onPressed: _openTagManager,
-            tooltip: 'Manage Tags',
-            color: AppColors.textSecondaryLight,
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _openSettings,
-            tooltip: 'Settings',
-            color: AppColors.textSecondaryLight,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchBar(bool isSearchActive, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      child: TextField(
-        controller: _searchController,
-        onChanged: _onSearchChanged,
-        decoration: InputDecoration(
-          hintText: 'Search emails, tags...',
-          prefixIcon: const Icon(Icons.search, size: 20),
-          suffixIcon: isSearchActive
-              ? IconButton(
-                  icon: const Icon(Icons.close, size: 20),
-                  onPressed: _clearSearch,
-                )
-              : null,
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 12,
-          ),
-          filled: true,
-          fillColor: AppColors.backgroundLight,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilters(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
+              child: Column(
                 children: [
-                  _buildFilterChip(EmailFilter.all, 'All'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(EmailFilter.unread, 'Unread'),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(EmailFilter.hasAttachment, 'Files'),
+                  InboxHeader(
+                    isDark: isDark,
+                    onTagManagerPressed: _openTagManager,
+                    onSettingsPressed: _openSettings,
+                    onGenerateEmailPressed: _openGeneratedEmails,
+                  ),
+                  InboxSearchBar(isDark: isDark),
+                  InboxFilterBar(isDark: isDark),
+                  Expanded(
+                    child: EmailListView(
+                      isMobile: false,
+                      selectedEmail: _selectedEmail,
+                      onEmailTap: (email) => _selectEmail(email, isMobile: false),
+                    ),
+                  ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          _buildSortChip(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmailList(
-    InboxState state,
-    String searchQuery,
-    bool isSearchActive,
-  ) {
-    final filteredEmails = ref.watch(filteredInboxProvider);
-    final allEmailsInState = _getEmailsFromState(state);
-
-    if (state is InboxLoading && allEmailsInState.isEmpty) {
-      return const LoadingWidget(message: 'Loading emails...');
-    }
-
-    if (state is InboxInitial) {
-      return const LoadingWidget(message: 'Loading...');
-    }
-
-    if (state is InboxEmpty) {
-      return const EmptyStateWidget(
-        title: 'No emails yet',
-        subtitle:
-            'Emails sent to your testmail.app namespace will appear here.',
-        icon: Icons.inbox_outlined,
-      );
-    }
-
-    final searchingEmails = _filterEmails(filteredEmails, searchQuery);
-
-    if (searchingEmails.isEmpty) {
-      return const EmptyStateWidget(
-        title: 'No emails found',
-        subtitle: 'Try adjusting your filters or search query.',
-        icon: Icons.filter_list_off,
-      );
-    }
-
-    final hasError = state is InboxError;
-
-    return Column(
-      children: [
-        if (hasError)
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.error.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+            Expanded(
+              child: _selectedEmail != null
+                  ? Container(
+                      color: AppColors.backgroundLight,
+                      child: EmailDetailScreen(
+                        email: _selectedEmail!,
+                        isEmbedded: true,
+                        key: ValueKey(_selectedEmail!.id),
+                      ),
+                    )
+                  : _buildEmptyDetailView(),
             ),
-            child: Row(
-              children: [
-                const Icon(Icons.cloud_off, size: 16, color: AppColors.error),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Network error',
-                    style: TextStyle(color: AppColors.error, fontSize: 12),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      ref.read(inboxNotifierProvider.notifier).refresh(),
-                  child: const Text('Retry', style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
-          ),
-
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: () => ref.read(inboxNotifierProvider.notifier).refresh(),
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 16),
-              itemCount: searchingEmails.length,
-              itemBuilder: (context, index) {
-                final email = searchingEmails[index];
-                final isSelected = _selectedEmail?.id == email.id;
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? AppColors.primaryLight.withValues(alpha: 0.08)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(12),
-                    border: isSelected
-                        ? Border.all(
-                            color: AppColors.primaryLight.withValues(
-                              alpha: 0.3,
-                            ),
-                            width: 2,
-                          )
-                        : null,
-                  ),
-                  child: EmailCard(
-                    email: email,
-                    searchQuery: searchQuery,
-                    onTap: () => _selectEmail(email),
-                  ),
-                );
-              },
-            ),
-          ),
+          ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildDetailView(TestMail email) {
-    return Container(
-      color: AppColors.backgroundLight,
-      child: EmailDetailScreen(email: email, isEmbedded: true),
+      ),
     );
   }
 
@@ -401,7 +204,7 @@ class _WebInboxScreenState extends ConsumerState<WebInboxScreen> {
             ),
             SizedBox(height: 8),
             Text(
-              'Choose an email from the list to see its content',
+              'Choose an email from the list to see its content, or use Up/Down arrow keys.',
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondaryLight,
@@ -413,196 +216,31 @@ class _WebInboxScreenState extends ConsumerState<WebInboxScreen> {
     );
   }
 
-  Widget _buildMobileLayout(
-    BuildContext context,
-    InboxState inboxState,
-    String searchQuery,
-    bool isSearchActive,
-    ThemeData theme,
-    bool isDark,
-  ) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Inbox'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.label_outline),
-            onPressed: _openTagManager,
-            tooltip: 'Manage Tags',
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: _openSettings,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(isSearchActive, isDark),
-          _buildFilters(isDark),
-          Expanded(
-            child: _buildMobileEmailList(
-              inboxState,
-              searchQuery,
-              isSearchActive,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    
+    // We access the displayed emails list from Riverpod's container state
+    // But since this is a widget method, ref.read works beautifully here
+    // Wait, ref is available in ConsumerState
+    final emails = ref.read(displayedEmailsProvider);
+    if (emails.isEmpty) return KeyEventResult.ignored;
 
-  Widget _buildMobileEmailList(
-    InboxState state,
-    String searchQuery,
-    bool isSearchActive,
-  ) {
-    final filteredEmails = ref.watch(filteredInboxProvider);
-    final allEmailsInState = _getEmailsFromState(state);
+    final currentIndex = _selectedEmail == null 
+        ? -1 
+        : emails.indexWhere((e) => e.id == _selectedEmail!.id);
 
-    if (state is InboxLoading && allEmailsInState.isEmpty) {
-      return const LoadingWidget(message: 'Loading emails...');
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      if (currentIndex < emails.length - 1) {
+        _selectEmail(emails[currentIndex + 1], isMobile: false);
+        return KeyEventResult.handled;
+      }
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      if (currentIndex > 0) {
+        _selectEmail(emails[currentIndex - 1], isMobile: false);
+        return KeyEventResult.handled;
+      }
     }
 
-    if (state is InboxInitial) {
-      return const LoadingWidget(message: 'Loading...');
-    }
-
-    if (state is InboxEmpty) {
-      return const EmptyStateWidget(
-        title: 'No emails yet',
-        subtitle:
-            'Emails sent to your testmail.app namespace will appear here.',
-        icon: Icons.inbox_outlined,
-      );
-    }
-
-    final searchingEmails = _filterEmails(filteredEmails, searchQuery);
-
-    if (searchingEmails.isEmpty) {
-      return const EmptyStateWidget(
-        title: 'No emails found',
-        subtitle: 'Try adjusting your filters or search query.',
-        icon: Icons.filter_list_off,
-      );
-    }
-
-    return RefreshIndicator(
-      onRefresh: () => ref.read(inboxNotifierProvider.notifier).refresh(),
-      child: ListView.builder(
-        padding: const EdgeInsets.only(top: 8, bottom: 16),
-        itemCount: searchingEmails.length,
-        itemBuilder: (context, index) {
-          final email = searchingEmails[index];
-          return EmailCard(
-            email: email,
-            searchQuery: searchQuery,
-            onTap: () {
-              ref.read(inboxNotifierProvider.notifier).markAsRead(email.id);
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EmailDetailScreen(email: email),
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildFilterChip(EmailFilter filter, String label) {
-    final currentFilter = ref.watch(emailFilterProvider);
-    final isSelected = currentFilter == filter;
-
-    return FilterChip(
-      label: Text(label, style: const TextStyle(fontSize: 13)),
-      selected: isSelected,
-      onSelected: (selected) {
-        if (selected) {
-          ref.read(emailFilterProvider.notifier).state = filter;
-        }
-      },
-      selectedColor: AppColors.primaryLight.withValues(alpha: 0.15),
-      checkmarkColor: AppColors.primaryLight,
-      labelStyle: TextStyle(
-        color: isSelected
-            ? AppColors.primaryLight
-            : AppColors.textSecondaryLight,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-      ),
-      backgroundColor: Colors.transparent,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isSelected ? AppColors.primaryLight : AppColors.dividerLight,
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    );
-  }
-
-  Widget _buildSortChip() {
-    final currentSort = ref.watch(emailSortProvider);
-    final isNewest = currentSort == EmailSort.newest;
-
-    return InkWell(
-      onTap: () {
-        ref.read(emailSortProvider.notifier).state = isNewest
-            ? EmailSort.oldest
-            : EmailSort.newest;
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.dividerLight),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isNewest ? Icons.arrow_downward : Icons.arrow_upward,
-              size: 14,
-              color: AppColors.textSecondaryLight,
-            ),
-            const SizedBox(width: 4),
-            const Text(
-              'Date',
-              style: TextStyle(
-                color: AppColors.textSecondaryLight,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  List<TestMail> _getEmailsFromState(InboxState state) {
-    if (state is InboxLoaded) {
-      return state.emails;
-    } else if (state is InboxLoading) {
-      return state.cachedEmails;
-    } else if (state is InboxError) {
-      return state.cachedEmails;
-    }
-    return [];
-  }
-
-  List<TestMail> _filterEmails(List<TestMail> emails, String query) {
-    if (query.isEmpty) return emails;
-    final lowerQuery = query.toLowerCase();
-    return emails.where((email) {
-      return email.subject.toLowerCase().contains(lowerQuery) ||
-          email.fromName.toLowerCase().contains(lowerQuery) ||
-          email.fromAddress.toLowerCase().contains(lowerQuery) ||
-          email.text.toLowerCase().contains(lowerQuery) ||
-          email.tag.toLowerCase().contains(lowerQuery);
-    }).toList();
+    return KeyEventResult.ignored;
   }
 }

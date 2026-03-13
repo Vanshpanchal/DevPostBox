@@ -2,7 +2,9 @@
 /// Uses AES encryption via flutter_secure_storage
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../constants/app_constants.dart';
 
 /// Configuration data class
@@ -36,6 +38,14 @@ class SecureStorageService {
   /// Save API configuration securely
   /// Never logs sensitive data
   Future<void> saveApiConfig(ApiConfig config) async {
+    if (kIsWeb) {
+      final box = Hive.box('settings_box');
+      await box.put(AppConstants.apiKeyStorageKey, config.apiKey);
+      await box.put(AppConstants.apiBaseUrlStorageKey, config.baseUrl);
+      await box.put(AppConstants.namespaceStorageKey, config.namespace);
+      return;
+    }
+
     await Future.wait([
       _storage.write(
         key: AppConstants.apiKeyStorageKey,
@@ -55,15 +65,23 @@ class SecureStorageService {
   /// Retrieve API configuration from secure storage
   /// Returns null if not configured
   Future<ApiConfig?> getApiConfig() async {
-    final results = await Future.wait([
-      _storage.read(key: AppConstants.apiKeyStorageKey),
-      _storage.read(key: AppConstants.apiBaseUrlStorageKey),
-      _storage.read(key: AppConstants.namespaceStorageKey),
-    ]);
+    String? apiKey, baseUrl, namespace;
 
-    final apiKey = results[0];
-    final baseUrl = results[1];
-    final namespace = results[2];
+    if (kIsWeb) {
+      final box = Hive.box('settings_box');
+      apiKey = box.get(AppConstants.apiKeyStorageKey) as String?;
+      baseUrl = box.get(AppConstants.apiBaseUrlStorageKey) as String?;
+      namespace = box.get(AppConstants.namespaceStorageKey) as String?;
+    } else {
+      final results = await Future.wait([
+        _storage.read(key: AppConstants.apiKeyStorageKey),
+        _storage.read(key: AppConstants.apiBaseUrlStorageKey),
+        _storage.read(key: AppConstants.namespaceStorageKey),
+      ]);
+      apiKey = results[0];
+      baseUrl = results[1];
+      namespace = results[2];
+    }
 
     if (apiKey == null || baseUrl == null || namespace == null) {
       return null;
@@ -78,6 +96,12 @@ class SecureStorageService {
 
   /// Check if API is configured
   Future<bool> hasConfig() async {
+    if (kIsWeb) {
+      final box = Hive.box('settings_box');
+      final apiKey = box.get(AppConstants.apiKeyStorageKey) as String?;
+      return apiKey != null && apiKey.isNotEmpty;
+    }
+
     final apiKey = await _storage.read(key: AppConstants.apiKeyStorageKey);
     return apiKey != null && apiKey.isNotEmpty;
   }
@@ -85,6 +109,14 @@ class SecureStorageService {
   /// Clear all stored configuration
   /// Used for key rotation or logout
   Future<void> clearConfig() async {
+    if (kIsWeb) {
+      final box = Hive.box('settings_box');
+      await box.delete(AppConstants.apiKeyStorageKey);
+      await box.delete(AppConstants.apiBaseUrlStorageKey);
+      await box.delete(AppConstants.namespaceStorageKey);
+      return;
+    }
+
     await Future.wait([
       _storage.delete(key: AppConstants.apiKeyStorageKey),
       _storage.delete(key: AppConstants.apiBaseUrlStorageKey),
@@ -94,6 +126,12 @@ class SecureStorageService {
 
   /// Update only the API key (for key rotation)
   Future<void> updateApiKey(String newApiKey) async {
+    if (kIsWeb) {
+      final box = Hive.box('settings_box');
+      await box.put(AppConstants.apiKeyStorageKey, newApiKey);
+      return;
+    }
+
     await _storage.write(
       key: AppConstants.apiKeyStorageKey,
       value: newApiKey,

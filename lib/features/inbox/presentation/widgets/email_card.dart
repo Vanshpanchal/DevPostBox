@@ -17,12 +17,14 @@ class EmailCard extends ConsumerStatefulWidget {
   final TestMail email;
   final VoidCallback onTap;
   final String searchQuery;
+  final bool isSelected;
 
   const EmailCard({
     super.key,
     required this.email,
     required this.onTap,
     this.searchQuery = '',
+    this.isSelected = false,
   });
 
   @override
@@ -76,31 +78,29 @@ class _EmailCardState extends ConsumerState<EmailCard> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 2),
-        child: Material(
-          color: _isHovered
-              ? AppColors.primaryLight.withValues(alpha: 0.02)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: _isHovered
-                    ? Border.all(
-                        color: AppColors.primaryLight.withValues(alpha: 0.2),
-                        width: 1,
-                      )
-                    : null,
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: widget.isSelected 
+                  ? AppColors.primaryLight.withValues(alpha: 0.08) 
+                  : AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: widget.isSelected 
+                    ? AppColors.primaryLight.withValues(alpha: 0.5)
+                    : AppColors.dividerLight.withValues(alpha: 0.6),
+                width: widget.isSelected ? 2 : 1,
               ),
-              child: Column(
+            ),
+            child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Header row with avatar, sender, time
@@ -414,8 +414,7 @@ class _EmailCardState extends ConsumerState<EmailCard> {
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildAvatar(BuildContext context) {
@@ -423,23 +422,19 @@ class _EmailCardState extends ConsumerState<EmailCard> {
       width: 40,
       height: 40,
       decoration: BoxDecoration(
-        color: AppColors.primaryLight,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primaryLight.withValues(alpha: 0.15),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: AppColors.primaryLight.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: AppColors.primaryLight.withValues(alpha: 0.2),
+        ),
       ),
       child: Center(
         child: Text(
           widget.email.initials,
           style: const TextStyle(
-            color: Colors.white,
+            color: AppColors.primaryLight,
             fontWeight: FontWeight.bold,
-            fontSize: 16,
+            fontSize: 15,
           ),
         ),
       ),

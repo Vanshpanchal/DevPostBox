@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/services/api_service.dart';
 import '../../../core/services/hive_service.dart';
 import '../../../core/services/secure_storage_service.dart';
+import '../data/inbox_repository.dart';
 import '../domain/test_mail.dart';
 
 /// Provider for HiveService
@@ -14,6 +15,13 @@ final hiveServiceProvider = Provider<HiveService>((ref) {
 final apiServiceProvider = Provider<ApiService>((ref) {
   final storageService = SecureStorageService();
   return ApiService(storageService: storageService);
+});
+
+/// Provider for InboxRepository
+final inboxRepositoryProvider = Provider<InboxRepository>((ref) {
+  final apiService = ref.watch(apiServiceProvider);
+  final hiveService = ref.watch(hiveServiceProvider);
+  return InboxRepository(apiService, hiveService);
 });
 
 /// State class for inbox
@@ -66,15 +74,14 @@ class InboxError extends InboxState {
 
 /// Notifier for inbox state
 class InboxNotifier extends StateNotifier<InboxState> {
-  final ApiService _apiService;
-  final HiveService _hiveService;
+  final InboxRepository _repository;
   final Set<String> _readEmailIds = {};
 
-  InboxNotifier(this._apiService, this._hiveService) : super(InboxInitial());
+  InboxNotifier(this._repository) : super(InboxInitial());
 
   /// Load read email IDs from storage
   void _loadReadEmailIds() {
-    final readIds = _hiveService.getReadEmailIds();
+    final readIds = _repository.getReadEmailIds();
     _readEmailIds.addAll(readIds);
   }
 
@@ -92,7 +99,7 @@ class InboxNotifier extends StateNotifier<InboxState> {
     debugPrint('📖 Loaded ${_readEmailIds.length} read email IDs');
 
     // Load cached emails while fetching
-    final cachedEmails = _hiveService.getCachedEmails();
+    final cachedEmails = _repository.getCachedEmails();
     debugPrint('💾 Loaded ${cachedEmails.length} cached emails');
     
     // Determine if we should update state to loading
@@ -118,7 +125,7 @@ class InboxNotifier extends StateNotifier<InboxState> {
 
     try {
       debugPrint('🌐 Fetching emails from API...');
-      final response = await _apiService.fetchEmails();
+      final response = await _repository.fetchEmails();
       debugPrint('✅ API response: ${response.emails.length} emails');
 
       if (response.emails.isEmpty) {
@@ -139,7 +146,7 @@ class InboxNotifier extends StateNotifier<InboxState> {
 
       // Cache in background
       try {
-        await _hiveService.cacheEmails(emails);
+        await _repository.cacheEmails(emails);
       } catch (e) {
         debugPrint('⚠️ Failed to cache emails: $e');
       }
@@ -183,7 +190,7 @@ class InboxNotifier extends StateNotifier<InboxState> {
   /// Mark email as read
   Future<void> markAsRead(String emailId) async {
     _readEmailIds.add(emailId);
-    await _hiveService.markAsRead(emailId);
+    await _repository.markAsRead(emailId);
 
     if (state is InboxLoaded) {
       final currentState = state as InboxLoaded;
@@ -228,9 +235,8 @@ class InboxNotifier extends StateNotifier<InboxState> {
 
 final inboxNotifierProvider =
     StateNotifierProvider<InboxNotifier, InboxState>((ref) {
-  final apiService = ref.watch(apiServiceProvider);
-  final hiveService = ref.watch(hiveServiceProvider);
-  return InboxNotifier(apiService, hiveService);
+  final repository = ref.watch(inboxRepositoryProvider);
+  return InboxNotifier(repository);
 });
 
 /// Filter types
