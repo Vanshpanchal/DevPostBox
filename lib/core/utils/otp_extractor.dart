@@ -4,8 +4,8 @@
 library;
 
 class OtpExtractor {
-  // Regex for purely numeric candidates of 4-8 digits
-  static final RegExp _candidateRegex = RegExp(r'\b\d{4,8}\b');
+  // Regex for purely numeric candidates of 4-8 digits, or 3-digit groups separated by a dash or space
+  static final RegExp _candidateRegex = RegExp(r'\b\d{3}[-\s]\d{3,4}\b|\b\d{4,8}\b');
 
   // Exclusion patterns
   static final RegExp _yearPattern = RegExp(r'^(19|20)\d{2}$');
@@ -58,8 +58,10 @@ class OtpExtractor {
       if (distanceDiff != 0) return distanceDiff;
 
       // If tie, prefer 6 digits
-      if (a.value.length == 6 && b.value.length != 6) return -1;
-      if (b.value.length == 6 && a.value.length != 6) return 1;
+      final aLen = a.value.replaceAll(RegExp(r'[-\s]'), '').length;
+      final bLen = b.value.replaceAll(RegExp(r'[-\s]'), '').length;
+      if (aLen == 6 && bLen != 6) return -1;
+      if (bLen == 6 && aLen != 6) return 1;
 
       return 0;
     });
@@ -91,9 +93,10 @@ class OtpExtractor {
 
   static bool _isExcluded(_Candidate candidate, String text) {
     final val = candidate.value;
+    final normalizedVal = val.replaceAll(RegExp(r'[-\s]'), '');
     
     // Year check (1900-2099)
-    if (_yearPattern.hasMatch(val)) return true;
+    if (normalizedVal.length == 4 && _yearPattern.hasMatch(normalizedVal)) return true;
 
     // Adjacent to time separator (:) or date separators
     final start = candidate.index;
@@ -117,9 +120,12 @@ class OtpExtractor {
   static _ScoredCandidate _scoreCandidate(_Candidate candidate, String text) {
     double score = 0;
     
+    // Normalize value by removing dashes or spaces for length check
+    final normalizedVal = candidate.value.replaceAll(RegExp(r'[-\s]'), '');
+    
     // Base Length Score
-    if (candidate.value.length == 6) score += 10;
-    else if (candidate.value.length == 4) score += 5;
+    if (normalizedVal.length == 6) score += 10;
+    else if (normalizedVal.length == 4) score += 5;
     else score += 2;
 
     // Context Boost

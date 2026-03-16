@@ -5,12 +5,11 @@ library;
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_html/flutter_html.dart';
+import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 import 'package:intl/intl.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/responsive_layout.dart';
 import '../../inbox/domain/test_mail.dart';
@@ -621,54 +620,35 @@ class _EmailDetailScreenState extends State<EmailDetailScreen> {
 
           // Email body
           if (widget.email.hasHtml)
-            Html(
-              data: widget.email.html,
-              style: {
-                'body': Style(
-                  margin: Margins.zero,
-                  padding: HtmlPaddings.zero,
-                  color: AppColors.textPrimaryLight,
-                  fontFamily: 'Inter',
-                  fontSize: FontSize(16),
-                  lineHeight: LineHeight(1.5),
-                ),
-                'p': Style(
-                  lineHeight: LineHeight(1.6),
-                  margin: Margins.only(bottom: 12),
-                ),
-                'a': Style(
-                  color: AppColors.primaryLight,
-                  textDecoration: TextDecoration.none,
-                  fontWeight: FontWeight.w600,
-                ),
-                'img': Style(
-                  display: Display.block,
-                  width: Width(100, Unit.percent),
-                  margin: Margins.symmetric(vertical: 16),
-                ),
-                'blockquote': Style(
-                  margin: Margins.symmetric(horizontal: 0, vertical: 12),
-                  padding: HtmlPaddings.only(left: 16),
-                  border: const Border(
-                    left: BorderSide(color: AppColors.secondary, width: 4),
-                  ),
-                  backgroundColor: AppColors.backgroundLight,
-                ),
-                'code': Style(
-                  backgroundColor: Colors.grey.shade100,
-                  padding: HtmlPaddings.symmetric(horizontal: 4, vertical: 2),
-                  fontFamily: 'JetBrains Mono',
-                ),
-                'pre': Style(
-                  backgroundColor: Colors.grey.shade100,
-                  padding: HtmlPaddings.all(12),
-                  fontFamily: 'JetBrains Mono',
-                  display: Display.block,
-                  whiteSpace: WhiteSpace.pre,
-                ),
+            HtmlWidget(
+              widget.email.html,
+              textStyle: const TextStyle(
+                color: AppColors.textPrimaryLight,
+                fontFamily: 'Inter',
+                fontSize: 16,
+                height: 1.5,
+              ),
+              customStylesBuilder: (element) {
+                if (element.localName == 'a') {
+                  return {'color': '#6E56CF', 'text-decoration': 'none', 'font-weight': '600'};
+                }
+                if (element.localName == 'blockquote') {
+                  return {'border-left': '4px solid #DFCC36', 'margin': '12px 0', 'padding-left': '16px', 'background-color': '#FAF9F5'};
+                }
+                if (element.localName == 'code') {
+                  return {'background-color': '#F5F5F5', 'padding': '2px 4px', 'font-family': 'JetBrains Mono'};
+                }
+                if (element.localName == 'pre') {
+                  return {'background-color': '#F5F5F5', 'padding': '12px', 'font-family': 'JetBrains Mono', 'display': 'block', 'white-space': 'pre'};
+                }
+                if (element.localName == 'img') {
+                  return {'display': 'block', 'margin': '16px 0', 'width': '100%'};
+                }
+                return null;
               },
-              onLinkTap: (url, _, __) {
-                if (url != null) _showLinkDialog(context, url);
+              onTapUrl: (url) {
+                _showLinkDialog(context, url);
+                return true;
               },
             )
           else
