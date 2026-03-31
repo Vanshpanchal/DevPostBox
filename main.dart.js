@@ -41494,7 +41494,7 @@ $S:3}
 A.b4U.prototype={
 $1(a){var s=A.f2().b
 s=s==null?null:s.canvasKitBaseUrl
-return(s==null?"https://www.gstatic.com/flutter-canvaskit/e4b8dca3f1b4ede4c30371002441c88c12187ed6/":s)+a},
+return(s==null?"https://www.gstatic.com/flutter-canvaskit/425cfb54d01a9472b3e81d9e76fd63a4a44cfbcb/":s)+a},
 $S:64}
 A.a35.prototype={
 gA(a){var s=this.a
@@ -66409,7 +66409,7 @@ else o=!0
 if(o){q=null
 s=1
 break}n=p.ayb()
-m=n+"@"+l+".testmail.app"
+m=l+n+".test@.testmail.app"
 l=p.r
 s=3
 return A.o(l.Cp(m),$async$Fa)
