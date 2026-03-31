@@ -27,7 +27,7 @@ class GeneratedEmailsNotifier extends StateNotifier<List<String>> {
   Future<String?> generateNew() async {
     if (_namespace == null || _namespace!.isEmpty) return null;
     final tag = _generateRandomTag();
-    final email = '$tag@$_namespace.testmail.app';
+    final email = '$_namespace$tag.test@.testmail.app';
     
     await _hiveService.addGeneratedEmail(email);
     state = _hiveService.getGeneratedEmails();
